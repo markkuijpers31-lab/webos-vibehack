@@ -25,8 +25,10 @@ keep working, and deleting the Developer Mode app removes everything.
 
 ## Setup
 
-You need a Mac on the same Wi-Fi as the TV, with Node.js (for LG's `ares` CLI, fetched with `npx`)
-and Python 3. The steps are macOS only for now: `install.sh` makes the app icon with `sips`.
+You need a computer on the same Wi-Fi as the TV (Windows, Linux or macOS) with
+[Node.js](https://nodejs.org) (for LG's `ares` CLI, fetched with `npx`) and
+[Python 3](https://www.python.org/downloads/). The commands below work in a Windows terminal
+(PowerShell) as well as on Linux and macOS; where they differ, both are shown.
 
 **1. Developer Mode on the TV**
 
@@ -37,9 +39,11 @@ and Python 3. The steps are macOS only for now: `install.sh` makes the app icon 
 
 **2. Connect your computer** (once)
 
+Use the IP address and passphrase from the Developer Mode app in place of `192.168.1.50` and
+`ABC123`:
+
 ```bash
-export TV_HOST=192.168.1.50                       # the IP from the Developer Mode app
-npx -y -p @webos-tools/cli ares-setup-device -a lgtv -i "{'host':'$TV_HOST','port':'9922','username':'prisoner'}"
+npx -y -p @webos-tools/cli ares-setup-device -a lgtv -i "{'host':'192.168.1.50','port':'9922','username':'prisoner'}"
 npx -y -p @webos-tools/cli ares-novacom --device lgtv --getkey        # type the passphrase
 npx -y -p @webos-tools/cli ares-setup-device -m lgtv -i "{'privatekey':'lgtv_webos','passphrase':'ABC123'}"
 ```
@@ -49,13 +53,27 @@ npx -y -p @webos-tools/cli ares-setup-device -m lgtv -i "{'privatekey':'lgtv_web
 ```bash
 git clone https://github.com/OmkarK97/webos-vibehack.git
 cd webos-vibehack
-python3 -m venv venv && venv/bin/pip install websockets
-TV_HOST=192.168.1.50 ./install.sh
+python3 -m venv venv
 ```
 
-The first run shows an "allow this device?" prompt on the TV: accept it. That pairing lets
-`sync-apps.py` read your apps and icons. `install.sh` then packages the app, installs it and opens
-it. Run it again whenever you install or remove apps on the TV.
+Then on Windows:
+
+```powershell
+venv\Scripts\pip install websockets
+venv\Scripts\python install.py 192.168.1.50
+```
+
+or on Linux and macOS:
+
+```bash
+venv/bin/pip install websockets
+venv/bin/python install.py 192.168.1.50
+```
+
+(On Windows, `python3` may be called `python` or `py`.) The first run shows an "allow this
+device?" prompt on the TV: accept it. That pairing lets `sync-apps.py` read your apps and icons.
+`install.py` then packages the app, installs it and opens it. Run it again whenever you install or
+remove apps on the TV.
 
 **4. A one-press shortcut**
 
@@ -73,7 +91,42 @@ appears, opens the launcher on top.
 - When the TV powers on to LG's home, it goes to the launcher too.
 - When the watcher isn't running, Home simply opens LG's home as usual.
 
-On a Mac, install it as a background service that starts at login:
+It only redirects Home while it runs, so put it on something that's always on, such as a
+Raspberry Pi, a home server or a NAS. It needs the pairing key: either run `install.py` from that
+device, or copy `.lgtv-key.json` there next to `home-watch.py`. To try it, run
+`venv/bin/python home-watch.py 192.168.1.50` (on Windows `venv\Scripts\python ...`).
+
+**On Linux** (a Raspberry Pi, say), run it as a service that starts at boot. Create
+`/etc/systemd/system/home-watch.service`, with your own paths, user and TV address:
+
+```ini
+[Unit]
+Description=Send the TV's Home button to the launcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/webos-vibehack
+ExecStart=/home/pi/webos-vibehack/venv/bin/python -u home-watch.py 192.168.1.50
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now home-watch     # start now and at every boot
+journalctl -u home-watch -f                # the log
+```
+
+**On Windows**, have Task Scheduler start it at logon: Create Task, trigger *At log on*, action
+*Start a program* with program `C:\path\to\webos-vibehack\venv\Scripts\pythonw.exe`, arguments
+`home-watch.py 192.168.1.50` and *Start in* `C:\path\to\webos-vibehack`. It only works while the
+PC is on.
+
+**On a Mac**, install it as a background service that starts at login:
 
 ```bash
 TV_HOST=192.168.1.50 ./home-watch-mac.sh       # install or update
@@ -82,9 +135,7 @@ TV_HOST=192.168.1.50 ./home-watch-mac.sh       # install or update
 
 macOS will ask for Local Network access for Python: allow it (System Settings → Privacy & Security →
 Local Network), or the watcher logs "No route to host". The log is at
-`~/Library/Logs/tv-vibehack-home-watch.log`. A Mac only redirects Home while it's awake and at
-home; for every time, run `python3 home-watch.py 192.168.1.50` on something that's always on, such
-as a Raspberry Pi.
+`~/Library/Logs/tv-vibehack-home-watch.log`.
 
 ## Using it
 
@@ -125,13 +176,13 @@ For when you do land on it. Names vary a little by webOS version:
 
 | File | What it does |
 |---|---|
-| [`app/`](app/) | The launcher: `index.html`, `style.css`, `app.js`, `config.js`, `appinfo.json` |
-| [`install.sh`](install.sh) | Syncs your apps, packages and installs the launcher, and opens it |
+| [`app/`](app/) | The launcher: `index.html`, `style.css`, `app.js`, `config.js`, `appinfo.json`, icons |
+| [`install.py`](install.py) | Syncs your apps, packages and installs the launcher, and opens it |
 | [`sync-apps.py`](sync-apps.py) | Reads apps, icons and HDMI inputs from the TV into `app/apps.js` and `app/icons/` |
 | [`home-watch.py`](home-watch.py) | Sends the Home button to the launcher |
 | [`home-watch-mac.sh`](home-watch-mac.sh) | Runs the watcher as a macOS background service |
 | [`lgtv.py`](lgtv.py) | Pairs with and talks to the TV's remote-control service |
-| [`assets/icon.jpg`](assets/icon.jpg) | The app icon, resized to PNG by `install.sh` |
+| [`assets/icon.jpg`](assets/icon.jpg) | The app icon's source; `app/icon.png` and `app/largeIcon.png` are made from it |
 
 ## Credits
 

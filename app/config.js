@@ -1,4 +1,4 @@
-// Launcher configuration. Edit this file, then run webos-launcher/install.sh.
+// Launcher configuration. Edit this file, then run install.py again.
 // App ids: run `python3 sync-apps.py --list` (or look in app/apps.js after a sync).
 window.CONFIG = {
   // Apps pinned to the dock row at the bottom, in this order. Missing apps are skipped.
