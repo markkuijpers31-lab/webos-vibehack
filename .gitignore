@@ -6,3 +6,7 @@ __pycache__/
 app/apps.js
 app/icons/
 .DS_Store
+
+# home-watch
+.home-watch-*.lock
+home-watch.log*

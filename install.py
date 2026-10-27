@@ -59,7 +59,8 @@ def main():
         sys.exit("usage: install.py <TV IP>   (or set TV_HOST)\n"
                  "       install.py --setup <TV IP> <passphrase>   (once, first)")
 
-    run([sys.executable, "sync-apps.py", host])
+    if run([sys.executable, "sync-apps.py", host], check=False).returncode:
+        sys.exit("Stopped: the sync failed (see above), so the launcher was not installed.")
 
     build = os.path.join(HERE, "build")
     shutil.rmtree(build, ignore_errors=True)

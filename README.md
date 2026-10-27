@@ -34,6 +34,13 @@ You need a computer on the same Wi-Fi as the TV (Windows, Linux or macOS) with
 [Python 3](https://www.python.org/downloads/). The commands below work in a Windows terminal
 (PowerShell) as well as on Linux and macOS; where they differ, both are shown.
 
+On Windows, install both with `winget`, then close and reopen PowerShell:
+
+```powershell
+winget install -e --id Python.Python.3.13
+winget install -e --id OpenJS.NodeJS.LTS
+```
+
 **1. Developer Mode on the TV**
 
 1. Create a free account at [webostv.developer.lge.com](https://webostv.developer.lge.com).
@@ -99,10 +106,15 @@ appears, opens the launcher on top.
 - When the TV powers on to LG's home, it goes to the launcher too.
 - When the watcher isn't running, Home simply opens LG's home as usual.
 
-It only redirects Home while it runs, so put it on something that's always on, such as a
-Raspberry Pi, a home server or a NAS. It needs the pairing key: either run `install.py` from that
-device, or copy `.lgtv-key.json` there next to `home-watch.py`. To try it, run
-`venv/bin/python home-watch.py 192.168.1.50` (on Windows `venv\Scripts\python ...`).
+It only redirects Home while it runs, so put it on something that's always on: a PC that stays
+on, a Raspberry Pi, a home server or a NAS. It needs the pairing key: either run `install.py` from
+that device, or copy `.lgtv-key.json` there next to `home-watch.py`. To try it, run
+`venv/bin/python home-watch.py 192.168.1.50` (on Windows `venv\Scripts\python ...`); Ctrl+C stops it.
+
+It keeps running while the TV is off, in standby, restarting or off the network, and reconnects by
+itself when the TV is back; it logs each change, not every retry. Give the TV a fixed IP address
+(a DHCP reservation in your router), or the watcher loses it when the address changes. Only one
+watcher runs per TV: a second one exits.
 
 **On Linux** (a Raspberry Pi, say), run it as a service that starts at boot. Create
 `/etc/systemd/system/home-watch.service`, with your own paths, user and TV address:
@@ -129,10 +141,26 @@ sudo systemctl enable --now home-watch     # start now and at every boot
 journalctl -u home-watch -f                # the log
 ```
 
-**On Windows**, have Task Scheduler start it at logon: Create Task, trigger *At log on*, action
-*Start a program* with program `C:\path\to\webos-vibehack\venv\Scripts\pythonw.exe`, arguments
-`home-watch.py 192.168.1.50` and *Start in* `C:\path\to\webos-vibehack`. It only works while the
-PC is on.
+**On Windows**, [`home-watch-windows.py`](home-watch-windows.py) sets it up in Task Scheduler.
+It starts the watcher without a window every time you sign in, and uses this folder's `venv` and
+pairing key, so run `install.py` first. In PowerShell, in the `webos-vibehack` folder:
+
+```powershell
+venv\Scripts\python home-watch-windows.py install 192.168.1.50    # install or update, and start now
+venv\Scripts\python home-watch-windows.py status                  # task state and the last log lines
+venv\Scripts\python home-watch-windows.py uninstall               # stop and remove
+```
+
+The task is called **webos-vibehack home-watch** in Task Scheduler. It has no time limit, keeps
+running on battery, starts only one copy, and Task Scheduler retries it if it fails to start;
+once running, the watcher reconnects by itself. The log is `home-watch.log` in the same folder
+(it rotates at 1 MB, three old files kept). Folders with spaces in their path are fine.
+
+The watcher only works while the PC is awake and signed in. While the PC sleeps, Home opens LG's
+home as usual; after it wakes, the watcher reconnects within about half a minute. The installer
+doesn't change your power settings: to keep the PC awake, set **Settings → System → Power &
+battery → Screen and sleep → When plugged in, put my device to sleep after** to **Never** (the
+screen may still turn off).
 
 **On a Mac**, install it as a background service that starts at login:
 
@@ -177,9 +205,21 @@ For when you do land on it. Names vary a little by webOS version:
   C6: Settings → General → Devices → External Devices; named "LG Connect Apps" or similar).
 - **`ares` says "All configured authentication methods failed".** The device profile is missing
   its key, or the TV's passphrase changed: run `install.py --setup` again (Key Server on).
+- **Windows says "Python was not found; run without arguments to install from the Microsoft
+  Store".** Python isn't installed: `python` is only a shortcut to the Store. Install it as in
+  [Setup](#setup) and open a new PowerShell. If the message stays, turn off the `python.exe` and
+  `python3.exe` entries under Settings → Apps → Advanced app settings → App execution aliases.
 - **PowerShell says "npx.ps1 cannot be loaded because running scripts is disabled".** Windows
   blocks npm's PowerShell wrapper. `install.py` avoids it; to run `ares` commands yourself, type
   `npx.cmd` instead of `npx`.
+- **The sync says "Sync failed: ... app/apps.js was left unchanged".** The TV couldn't be reached
+  or sent no valid app list, so nothing was changed and `install.py` stopped before installing.
+  Check that the TV is on and on the same network, then run it again. Apps whose icon won't
+  download still appear, with their last icon or a plain tile.
+- **The Home button stops redirecting.** Look in the watcher's log (`home-watch.log` on Windows,
+  or `home-watch-windows.py status`). "pairing failed" means the TV forgot this computer: run
+  `install.py` again, accept the prompt, then restart the watcher (`home-watch-windows.py install`
+  on Windows). "TV not reachable" while the TV is on usually means its IP address changed.
 - **Apps stop opening after a while.** Developer Mode sessions expire (LG shows the time left in
   the Developer Mode app; it was 999 hours on our C6). Press **Extend Session Time** there.
 
@@ -191,6 +231,7 @@ For when you do land on it. Names vary a little by webOS version:
 | [`install.py`](install.py) | Syncs your apps, packages and installs the launcher, and opens it |
 | [`sync-apps.py`](sync-apps.py) | Reads apps, icons and HDMI inputs from the TV into `app/apps.js` and `app/icons/` |
 | [`home-watch.py`](home-watch.py) | Sends the Home button to the launcher |
+| [`home-watch-windows.py`](home-watch-windows.py) | Runs the watcher in the background on Windows (Task Scheduler) |
 | [`home-watch-mac.sh`](home-watch-mac.sh) | Runs the watcher as a macOS background service |
 | [`lgtv.py`](lgtv.py) | Pairs with and talks to the TV's remote-control service |
 | [`assets/icon.jpg`](assets/icon.jpg) | The app icon's source; `app/icon.png` and `app/largeIcon.png` are made from it |
