@@ -37,43 +37,47 @@ You need a computer on the same Wi-Fi as the TV (Windows, Linux or macOS) with
 3. Turn on **Dev Mode Status** (the TV restarts), open the app again and turn on **Key Server**.
    Note the **IP address** and **Passphrase** it shows.
 
-**2. Connect your computer** (once)
-
-Use the IP address and passphrase from the Developer Mode app in place of `192.168.1.50` and
-`ABC123`:
+**2. Get the code**
 
 ```bash
-npx -y -p @webos-tools/cli ares-setup-device -a lgtv -i "{'host':'192.168.1.50','port':'9922','username':'prisoner'}"
-npx -y -p @webos-tools/cli ares-novacom --device lgtv --getkey        # type the passphrase
-npx -y -p @webos-tools/cli ares-setup-device -m lgtv -i "{'privatekey':'lgtv_webos','passphrase':'ABC123'}"
-```
-
-**3. Install**
-
-```bash
-git clone https://github.com/OmkarK97/webos-vibehack.git
+git clone https://github.com/markkuijpers31-lab/webos-vibehack.git
 cd webos-vibehack
 python3 -m venv venv
 ```
 
-Then on Windows:
+(On Windows, `python3` may be called `python` or `py`.) Then on Windows:
 
 ```powershell
 venv\Scripts\pip install websockets
-venv\Scripts\python install.py 192.168.1.50
 ```
 
 or on Linux and macOS:
 
 ```bash
 venv/bin/pip install websockets
+```
+
+**3. Connect and install**
+
+Use the IP address and passphrase from the Developer Mode app in place of `192.168.1.50` and
+`ABC123`. On Windows:
+
+```powershell
+venv\Scripts\python install.py --setup 192.168.1.50 ABC123     # once
+venv\Scripts\python install.py 192.168.1.50
+```
+
+or on Linux and macOS:
+
+```bash
+venv/bin/python install.py --setup 192.168.1.50 ABC123      # once
 venv/bin/python install.py 192.168.1.50
 ```
 
-(On Windows, `python3` may be called `python` or `py`.) The first run shows an "allow this
-device?" prompt on the TV: accept it. That pairing lets `sync-apps.py` read your apps and icons.
-`install.py` then packages the app, installs it and opens it. Run it again whenever you install or
-remove apps on the TV.
+`--setup` registers the TV with LG's `ares` CLI and fetches its key from the Key Server. The first
+install shows an "allow this device?" prompt on the TV: accept it. That pairing lets
+`sync-apps.py` read your apps and icons. `install.py` then packages the app, installs it and opens
+it. Run it again whenever you install or remove apps on the TV.
 
 **4. A one-press shortcut**
 
@@ -168,7 +172,10 @@ For when you do land on it. Names vary a little by webOS version:
 - **No pairing prompt on the TV.** Turn on the TV's option for connecting from mobile apps (on the
   C6: Settings → General → Devices → External Devices; named "LG Connect Apps" or similar).
 - **`ares` says "All configured authentication methods failed".** The device profile is missing
-  its key: run the third command in step 2 again.
+  its key, or the TV's passphrase changed: run `install.py --setup` again (Key Server on).
+- **PowerShell says "npx.ps1 cannot be loaded because running scripts is disabled".** Windows
+  blocks npm's PowerShell wrapper. `install.py` avoids it; to run `ares` commands yourself, type
+  `npx.cmd` instead of `npx`.
 - **Apps stop opening after a while.** Developer Mode sessions expire (LG shows the time left in
   the Developer Mode app; it was 999 hours on our C6). Press **Extend Session Time** there.
 
