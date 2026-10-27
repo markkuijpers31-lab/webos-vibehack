@@ -137,7 +137,8 @@
       var img = document.createElement('img');
       var item = { app: app, el: el, card: card, color: null };
       img.onload = function () { paintTile(item, img); };
-      img.src = app.icon;
+      img.onerror = function () { img.onerror = null; img.src = 'default-icon.png'; };   // icon file missing
+      img.src = app.icon || 'default-icon.png';
       card.appendChild(img);
       el.appendChild(card);
       var name = document.createElement('div');

@@ -6,7 +6,6 @@ import asyncio
 import json
 import os
 import ssl
-import sys
 
 import websockets
 
@@ -26,6 +25,14 @@ PERMISSIONS = [
 ]
 
 
+class TVError(Exception):
+    """The TV answered a request with an error, or without the data asked for."""
+
+
+class PairingError(TVError):
+    """The TV refused this computer, or wants it to pair again."""
+
+
 def insecure_ctx():
     # The TV uses a certificate from LG's own CA.
     ctx = ssl.create_default_context()
@@ -42,7 +49,9 @@ def load_keys():
         return {}
 
 
-async def session(host, **connect_args):
+async def session(host, allow_prompt=True, **connect_args):
+    """A registered connection. With allow_prompt=False, a TV that asks to pair again (the saved
+    key is missing or no longer valid) raises PairingError instead of waiting for the prompt."""
     keys = load_keys()
     ws = await websockets.connect(f"wss://{host}:3001", ssl=insecure_ctx(), open_timeout=10, max_size=None,
                                   **connect_args)
@@ -53,17 +62,23 @@ async def session(host, **connect_args):
     }
     if host in keys:
         payload["client-key"] = keys[host]
-    else:
+    elif allow_prompt:
         print("Accept the prompt on the TV...")
-    await ws.send(json.dumps({"type": "register", "id": "register_0", "payload": payload}))
-    while True:
-        msg = json.loads(await asyncio.wait_for(ws.recv(), 60))
-        if msg["type"] == "registered":
-            break
-        if msg["type"] == "error":
-            await ws.close()
-            sys.exit(f"Pairing failed: {msg.get('error')}")
-    key = msg["payload"]["client-key"]
+    try:
+        await ws.send(json.dumps({"type": "register", "id": "register_0", "payload": payload}))
+        while True:
+            msg = json.loads(await asyncio.wait_for(ws.recv(), 60))
+            if msg.get("type") == "registered":
+                break
+            if msg.get("type") == "error":
+                raise PairingError(msg.get("error") or "the TV refused this computer")
+            if not allow_prompt and (msg.get("payload") or {}).get("pairingType") == "PROMPT":
+                raise PairingError("the TV asks to pair again: the saved pairing key is missing or no "
+                                   "longer valid")
+        key = msg["payload"]["client-key"]
+    except BaseException:
+        await ws.close()
+        raise
     if keys.get(host) != key:
         keys[host] = key
         with open(KEY_FILE, "w") as f:
@@ -72,10 +87,16 @@ async def session(host, **connect_args):
 
 
 async def call(ws, uri, payload=None, n=[0]):
+    """The answer's payload. Raises TVError when the TV answers with an error or no payload."""
     n[0] += 1
     rid = f"c{n[0]}"
     await ws.send(json.dumps({"type": "request", "id": rid, "uri": uri, "payload": payload or {}}))
     while True:
         msg = json.loads(await asyncio.wait_for(ws.recv(), 20))
-        if msg.get("id") == rid:
-            return msg.get("payload", {})
+        if msg.get("id") != rid:
+            continue
+        answer = msg.get("payload")
+        if msg.get("type") == "error" or not isinstance(answer, dict) or answer.get("returnValue") is False:
+            reason = msg.get("error") or (answer or {}).get("errorText") or "no valid answer"
+            raise TVError(f"{uri}: {reason}")
+        return answer
