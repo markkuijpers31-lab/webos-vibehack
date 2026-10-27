@@ -34,6 +34,13 @@ You need a computer on the same Wi-Fi as the TV (Windows, Linux or macOS) with
 [Python 3](https://www.python.org/downloads/). The commands below work in a Windows terminal
 (PowerShell) as well as on Linux and macOS; where they differ, both are shown.
 
+On Windows, install both with `winget`, then close and reopen PowerShell:
+
+```powershell
+winget install -e --id Python.Python.3.13
+winget install -e --id OpenJS.NodeJS.LTS
+```
+
 **1. Developer Mode on the TV**
 
 1. Create a free account at [webostv.developer.lge.com](https://webostv.developer.lge.com).
@@ -177,6 +184,10 @@ For when you do land on it. Names vary a little by webOS version:
   C6: Settings → General → Devices → External Devices; named "LG Connect Apps" or similar).
 - **`ares` says "All configured authentication methods failed".** The device profile is missing
   its key, or the TV's passphrase changed: run `install.py --setup` again (Key Server on).
+- **Windows says "Python was not found; run without arguments to install from the Microsoft
+  Store".** Python isn't installed: `python` is only a shortcut to the Store. Install it as in
+  [Setup](#setup) and open a new PowerShell. If the message stays, turn off the `python.exe` and
+  `python3.exe` entries under Settings → Apps → Advanced app settings → App execution aliases.
 - **PowerShell says "npx.ps1 cannot be loaded because running scripts is disabled".** Windows
   blocks npm's PowerShell wrapper. `install.py` avoids it; to run `ares` commands yourself, type
   `npx.cmd` instead of `npx`.
