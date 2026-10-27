@@ -3,6 +3,10 @@
 An Apple TV-style home screen for LG TVs. It's a webOS port of the launcher from
 [tv-vibehack](https://github.com/Gathin23/tv-vibehack), which does the same for Android TVs.
 
+This is a fork of [OmkarK97/webos-vibehack](https://github.com/OmkarK97/webos-vibehack) that also
+installs from Windows and Linux. Install from this repository, not the original: the original's
+`install.sh` only runs on macOS.
+
 ![The launcher running on an LG OLED C6](docs/screenshot.jpg)
 
 Tested on an LG OLED C6 (OLED55C6XLA, webOS 26, firmware 43.21.79).
@@ -143,9 +147,9 @@ Local Network), or the watcher logs "No route to host". The log is at
 
 ## Using it
 
-Same as the [Android launcher](https://github.com/Gathin23/tv-vibehack#the-launcher): a dock of four apps with the focused app's name above it and a glow
-in its colour, the rest of your apps in a grid below, and Inputs (HDMI ports and Live TV), Wi-Fi
-and Settings at the top. The header slides away when the grid scrolls into it.
+A dock of four apps with the focused app's name above it and a glow in its colour, the rest of
+your apps in a grid below, and Inputs (HDMI ports and Live TV), Wi-Fi and Settings at the top.
+The header slides away when the grid scrolls into it.
 
 **Rearrange tiles on the TV**: hold **OK** on a tile until it wiggles, move it with the arrows
 (into the top row puts it in the dock), then **OK** to place it or **Back** to cancel. The order is
